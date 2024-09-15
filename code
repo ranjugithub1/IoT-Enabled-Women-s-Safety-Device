@@ -1,0 +1,66 @@
+#include <SoftwareSerial.h>    //Create software serial object to communicate with SIM800L
+SoftwareSerial GSM(11, 10); //SIM800L Tx & Rx is connected to Arduino #11 & #10
+
+char phone_no[] = "+91"; // Change to the phone number you want to send the SMS to
+char sms_text[] = "i am in trouble pls help me "; // The message you want to send
+
+#define bt_C  A1
+
+void setup() { 
+  Serial.begin(9600); // Begin serial communication with Arduino and Arduino IDE (Serial Monitor)
+  GSM.begin(9600);   // Begin serial communication with Arduino and SIM800L
+
+  pinMode(bt_C, INPUT_PULLUP); // Declare bt_C as input
+
+  Serial.println("Initializing....");
+  initModule("AT", "OK", 1000); // Once the handshake test is successful, it will respond with OK
+  
+}
+
+void loop() {
+  if (digitalRead(bt_C) == LOW) {
+    sendSMS(phone_no, sms_text); // Send SMS
+    delay(3000); // Wait for 3 seconds
+    callUp(phone_no); // Then make the call
+  }
+
+  delay(5);
+}
+
+void sendSMS(char *number, char *text) {
+  GSM.println("AT+CMGF=1"); // Set SMS mode to text
+  delay(1000);
+  GSM.print("AT+CMGS=\""); // Send SMS to number
+  GSM.print(number);
+  GSM.println("\"");
+  delay(1000);
+  GSM.print(text);
+  delay(1000);
+  GSM.write(26); // ASCII code of CTRL+Z
+  delay(5000); // Wait for the message to be sent
+}
+
+void callUp(char *number) {
+  GSM.print("ATD"); GSM.print(number); GSM.println(";"); // Call to the specific number, ends with semi-colon
+  delay(20000); // Wait for 20 seconds...
+  GSM.println("ATH"); // Hang up
+  delay(100);
+}
+
+void initModule(String cmd, char *res, int t) {
+  while (1) {
+    Serial.println(cmd);
+    GSM.println(cmd);
+    delay(100);
+    while (GSM.available() > 0) {
+      if (GSM.find(res)) {
+        Serial.println(res);
+        delay(t);
+        return;
+      } else {
+        Serial.println("Error");
+      }
+    }
+    delay(t);
+  }
+}
